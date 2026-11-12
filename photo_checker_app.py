@@ -14,9 +14,16 @@ COORD_MAP = {
     4: (1603584, 3260950, 9994200, 5740500),
     5: (1603584, 3260950, 9994200, 5740500),
     6: (1574725, 3252925, 10132800, 5822800),
+    # Journey no longer uses coordinates
 }
+
 SLIDE_TO_SECTION = {
-    2: "Week 1", 3: "Week 2", 4: "Week 3", 5: "Week 4", 6: "Week 5",
+    2: "Week 1",
+    3: "Week 2",
+    4: "Week 3",
+    5: "Week 4",
+    6: "Week 5",
+    7: "Journey (own words)",
 }
 SECTIONS = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Journey (own words)"]
 HEADER = ["Student", "File name", "File link", *SECTIONS, "Overall", "Missing / problem sections", "Checked at"]
@@ -80,6 +87,33 @@ def has_photo_in_box(slide, target_box):
             return True
     return False
 
+def has_media_in_box(slide, target_box):
+    """Return True if an image OR a video sits inside the target box."""
+    for el in iter_elements(slide.get("pageElements", [])):
+        if "image" in el or "video" in el:
+            if boxes_overlap(element_bbox(el), target_box):
+                return True
+    return False
+
+def debug_journey_elements(presentation):
+    slides = presentation.get("slides", [])
+    if len(slides) < 8:
+        return "No Journey slide"
+    slide = slides[7]
+    elements = []
+    for el in iter_elements(slide.get("pageElements", [])):
+        kind = "image" if "image" in el else "video" if "video" in el else "other"
+        if kind in ("image", "video"):
+            bbox = element_bbox(el)
+            elements.append({
+                "type": kind,
+                "left": round(bbox[0]),
+                "top": round(bbox[1]),
+                "width": round(bbox[2]),
+                "height": round(bbox[3]),
+            })
+    return elements
+
 def student_name_from_slides(slides, fallback):
     if len(slides) > 1:
         text = slide_text(slides[1])
@@ -96,16 +130,15 @@ def analyze_slides(presentation, file_label):
 
     for idx, section in SLIDE_TO_SECTION.items():
         if idx < len(slides):
-            status[section] = has_photo_in_box(slides[idx], COORD_MAP[idx])
+            if section == "Journey (own words)":
+                # Only look for a video on the Journey slide
+                slide = slides[idx]
+                has_video = any("video" in el for el in iter_elements(slide.get("pageElements", [])))
+                status[section] = has_video
+            else:
+                status[section] = has_photo_in_box(slides[idx], COORD_MAP[idx])
         else:
             status[section] = False
-
-    for slide in slides:
-        low = slide_text(slide).lower()
-        if "the journey in their own words" in low or "journey in their own words" in low:
-            has_img = any("image" in el for el in iter_elements(slide.get("pageElements", [])))
-            status["Journey (own words)"] = has_img
-            break
 
     return student_name_from_slides(slides, file_label), status
 
@@ -186,6 +219,8 @@ if run_btn:
             try:
                 if f["mimeType"] == GSLIDES_MIME:
                     presentation = slides_svc.presentations().get(presentationId=f["id"]).execute()
+                    #if "DAIWIK" in f["name"].upper():
+                    #    st.write("Journey elements:", debug_journey_elements(presentation))
                     name, st_status = analyze_slides(presentation, f["name"])
                     rows.append(build_row(f["name"], f.get("webViewLink", ""), name, st_status))
                 else:
