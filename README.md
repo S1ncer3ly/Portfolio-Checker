@@ -1,31 +1,30 @@
 # Student Portfolio Photo Checker
 
-Checks every PPTX / Google Slides file in a Drive folder for photos on
-Week 1-5 and "The journey in their own words", and writes a report to a Google Sheet.
+A Streamlit dashboard that checks Google Slides presentations in a Drive folder for student photos (Weeks 1–5) and a self-reflection video ("The journey in their own words"), then writes a clear report to a Google Sheet.
 
-## Folder contents
-- drive_photo_checker.py  - main script (Drive -> Google Sheet)
-- check_photos.py         - simple local checker for .pptx files on your computer
-- requirements.txt        - libraries to install
-- run.bat / run.sh        - one-click run (IDs already filled in)
-- service_account.json    - YOU add this (new key, never share it)
+## Features
+- No file downloads — uses the Google Slides API
+- Checks Weeks 1–5 with precise coordinate boxes
+- Detects video elements on the Journey / self-reflection slide
+- Clean Streamlit interface (enter Folder ID + Sheet ID)
+- Secure credential handling via Streamlit secrets
 
-## Steps
-1. Create a NEW key (delete the old exposed one):
-   https://console.cloud.google.com/iam-admin/serviceaccounts
-   -> portfolio-generator@studentportfolio-507613.iam.gserviceaccount.com
-   -> Keys -> Add key -> Create new key -> JSON. Rename to service_account.json
-   and put it in this folder.
-2. Enable APIs:
-   https://console.cloud.google.com/apis/library/drive.googleapis.com
-   https://console.cloud.google.com/apis/library/sheets.googleapis.com
-3. Share the Drive folder (Viewer) and the Google Sheet (Editor) with
-   portfolio-generator@studentportfolio-507613.iam.gserviceaccount.com
-4. Install libraries:   pip install -r requirements.txt
-5. Run: double-click run.bat (Windows) or ./run.sh (Mac/Linux)
-6. Open the Google Sheet to see the results.
+### 2. Credentials (recommended: Streamlit secrets)
+Create `.streamlit/secrets.toml` (or add the secrets in Streamlit Cloud):
 
-## Troubleshooting
-- 403/404: folder or sheet not shared with the service account, or an API not enabled.
-- "Found 0 presentation(s)": files not shared, or in sub-folders you can't see.
-- Local test without Google: python drive_photo_checker.py --local file.pptx
+```toml
+[google_auth]
+type = "service_account"
+project_id = "your-project-id"
+private_key_id = "xxxxxxxx"
+private_key = """-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----
+"""
+client_email = "your-service-account@your-project-id.iam.gserviceaccount.com"
+client_id = "123456789012345678901"
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project-id.iam.gserviceaccount.com"
+universe_domain = "googleapis.com"
