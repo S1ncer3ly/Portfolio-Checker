@@ -1,0 +1,4 @@
+python-pptx
+google-api-python-client
+google-auth
+tomli; python_version < "3.11"
