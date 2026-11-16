@@ -1,3 +1,4 @@
-service_account.jsonservice_account.json
+service_account.json
 Secrets.toml
-.streamlit
+secrets.toml
+.DS_Store
