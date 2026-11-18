@@ -44,17 +44,39 @@ SECTIONS = {
 }
 
 
-def google_clients():
-    """Read Drive/Slides and write only an explicitly specified Google spreadsheet."""
+def get_service_account_credentials():
+    """Load credentials from Streamlit secrets (Cloud) or local service_account.json."""
     from google.oauth2 import service_account
-    from googleapiclient.discovery import build
 
+    # Prefer Streamlit secrets when running on Streamlit Cloud
+    try:
+        import streamlit as st
+        if "gcp_service_account" in st.secrets:
+            return service_account.Credentials.from_service_account_info(
+                dict(st.secrets["gcp_service_account"]),
+                scopes=SCOPES,
+            )
+    except Exception:
+        pass  # not running under Streamlit, or secrets not set
+
+    # Fallback: local JSON file
     credentials_file = ROOT / "service_account.json"
     if not credentials_file.is_file():
-        raise FileNotFoundError(f"Missing service-account credentials: {credentials_file}")
-    creds = service_account.Credentials.from_service_account_file(
+        raise FileNotFoundError(
+            f"Missing service-account credentials. "
+            f"On Streamlit Cloud put them under [gcp_service_account] in secrets; "
+            f"locally place service_account.json next to the script."
+        )
+    return service_account.Credentials.from_service_account_file(
         str(credentials_file), scopes=SCOPES
     )
+
+
+def google_clients():
+    """Read Drive/Slides and write only an explicitly specified Google spreadsheet."""
+    from googleapiclient.discovery import build
+
+    creds = get_service_account_credentials()
     drive = build("drive", "v3", credentials=creds, cache_discovery=False)
     slides = build("slides", "v1", credentials=creds, cache_discovery=False)
     sheets = build("sheets", "v4", credentials=creds, cache_discovery=False)
@@ -524,7 +546,6 @@ def analyze(raw, template_images, model=None, min_inches=0.9, min_pixels=250):
             "empty_placeholders": " | ".join(details["empty_placeholders"]),
         }
     return results
-
 
 
 def analyze_native_slides(presentation, template_images, model=None,
@@ -1371,12 +1392,9 @@ def main():
             if spreadsheet_input.strip():
                 if st.button("Retry Google Sheets sync", help="Writes the currently displayed report; does not rerun the Drive scan"):
                     try:
-                        from google.oauth2 import service_account
                         from googleapiclient.discovery import build
-                        credentials = service_account.Credentials.from_service_account_file(
-                            str(ROOT / "service_account.json"), scopes=SCOPES)
-                        sheets_client = build("sheets", "v4", credentials=credentials,
-                                              cache_discovery=False)
+                        credentials = get_service_account_credentials()
+                        sheets_client = build("sheets", "v4", credentials=credentials, cache_discovery=False)
                         show_sheet_sync_result(st, sync_report_to_google_sheet(
                             sheets_client, spreadsheet_input, report_tab, df))
                     except Exception as sync_exc:
